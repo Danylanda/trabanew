@@ -1,57 +1,57 @@
 <?php
-include('conec.php');
-$conn = getConnection();
+// Conexión a la base de datos
+$conn = new mysqli('localhost', 'root', '', 'sistema_pagos');
 
-// Verificar si el formulario fue enviado mediante POST
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Validar que se recibieron todos los campos necesarios
-    if (isset($_POST['ID_Cliente']) && !empty($_POST['ID_Cliente']) &&
-        isset($_POST['Nombre_Cliente']) && !empty($_POST['Nombre_Cliente']) &&
-        isset($_POST['Fecha_de_pago']) && !empty($_POST['Fecha_de_pago']) &&
-        isset($_POST['Monto_recibido']) && !empty($_POST['Monto_recibido']) &&
-        isset($_POST['No_Comprobante']) && !empty($_POST['No_Comprobante']) &&
-        isset($_POST['ID_Contrato']) && !empty($_POST['ID_Contrato']) &&
-        isset($_POST['No_Cuota']) && !empty($_POST['No_Cuota']) &&
-        isset($_POST['Tipo_de_Cuota']) && !empty($_POST['Tipo_de_Cuota']) &&
-        isset($_POST['Moneda']) && !empty($_POST['Moneda']) &&
-        isset($_POST['Tipo_de_Cambio']) && !empty($_POST['Tipo_de_Cambio'])) {
-        
-        // Obtener los datos del formulario
-        $id_cliente = $_POST['ID_Cliente'];
-        $nombre_cliente = $_POST['Nombre_Cliente'];
-        $fecha_pago = $_POST['Fecha_de_pago'];
-        $monto_recibido = $_POST['Monto_recibido'];
-        $nro_comprobante = $_POST['No_Comprobante'];
-        $id_contrato = $_POST['ID_Contrato'];
-        $nro_cuota = $_POST['No_Cuota'];
-        $tipo_cuota = $_POST['Tipo_de_Cuota'];
-        $moneda = $_POST['Moneda'];
-        $tc = $_POST['Tipo_de_Cambio'];
-
-        // Calcular los montos en dólares y bolivianos
-        $pago_dolares = ($moneda == 'USD') ? $monto_recibido : $monto_recibido / $tc;
-        $pago_bolivianos = ($moneda == 'BOL') ? $monto_recibido : $monto_recibido * $tc;
-
-        // Actualizar el pago
-        $sql = "UPDATE pagos 
-                SET Fecha_de_pago = ?, No_Comprobante = ?, ID_Contrato = ?, No_Cuota = ?, Tipo_de_Cuota = ?, Moneda = ?, Tipo_de_Cambio = ?, Monto_recibido = ?, Pago_dolares = ?, Pago_bolivianos = ? 
-                WHERE ID_Cliente = ?";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param('sssisssdddi', $fecha_pago, $nro_comprobante, $id_contrato, $nro_cuota, $tipo_cuota, $moneda, $tc, $monto_recibido, $pago_dolares, $pago_bolivianos, $id_cliente);
-
-        if ($stmt->execute()) {
-            header("Location: infoclientes.php");
-            exit;
-        } else {
-            echo "Error al actualizar pago: " . $conn->error;
-        }
-
-        $stmt->close();
-        closeConnection($conn);
-    } else {
-        echo "Error: Todos los campos son obligatorios.";
-    }
-} else {
-    echo "Método no permitido.";
+// Verifica la conexión
+if ($conn->connect_error) {
+    die("Error de conexión: " . $conn->connect_error);
 }
+
+// Obtener el ID del cliente a editar desde la URL
+$id_cliente = $_GET['id_cliente'];
+
+// Consulta para obtener los datos del cliente
+$sql = "SELECT * FROM clientes WHERE id_cliente = ?";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $id_cliente);
+$stmt->execute();
+$result = $stmt->get_result();
+
+if ($result->num_rows > 0) {
+    $cliente = $result->fetch_assoc(); // Cargar los datos del cliente
+} else {
+    echo "Cliente no encontrado.";
+    exit;
+}
+
+$conn->close();
 ?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Cliente</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <h1 class="text-center mb-4">Editar Cliente</h1>
+        <form action="procesar_cliente.php" method="POST">
+            <!-- Campo oculto para el ID del cliente -->
+            <input type="hidden" name="id_cliente" value="<?= $cliente['id_cliente'] ?>">
+
+            <div class="mb-3">
+                <label for="nombre_cliente" class="form-label">Nombre del Cliente</label>
+                <input type="text" class="form-control" id="nombre_cliente" name="nombre_cliente" value="<?= $cliente['nombre_cliente'] ?>" required>
+            </div>
+
+            <div class="text-center">
+                <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                <a href="index.php" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

@@ -12,20 +12,22 @@ if ($conexion->connect_error) {
     die("Error de conexión: " . $conexion->connect_error);
 }
 
-// Consulta para identificar cuotas con No_Cuota > 3
+// Consulta para identificar cuotas con nro_cuota > 3
 $sql = "
     SELECT 
-        p.ID_Cliente, 
-        c.Nombre AS Nombre_Cliente, 
-        MAX(p.Fecha_de_pago) AS Ultima_Fecha_Pago
+        c.id_cliente, 
+        cl.nombre_cliente, 
+        MAX(p.fecha_pago) AS fecha_pago
     FROM 
-        pagos p
+        cuotas c
     JOIN 
-        clientes c ON p.ID_Cliente = c.ID_Cliente
+        clientes cl ON c.id_cliente = cl.id_cliente
+    JOIN 
+        pagos p ON c.id_cuota = p.id_cuota
     WHERE 
-        p.No_Cuota > 3
+        c.nro_cuota > 3
     GROUP BY 
-        p.ID_Cliente, c.Nombre
+        c.id_cliente, cl.nombre_cliente
 ";
 
 $resultado = $conexion->query($sql);
@@ -86,9 +88,9 @@ $resultado = $conexion->query($sql);
             if ($resultado->num_rows > 0) {
                 while ($fila = $resultado->fetch_assoc()) {
                     echo "<tr class='highlight'>";
-                    echo "<td>{$fila['ID_Cliente']}</td>";
-                    echo "<td>{$fila['Nombre_Cliente']}</td>";
-                    echo "<td>{$fila['Ultima_Fecha_Pago']}</td>";
+                    echo "<td>{$fila['id_cliente']}</td>";
+                    echo "<td>{$fila['nombre_cliente']}</td>";
+                    echo "<td>{$fila['fecha_pago']}</td>";
                     echo "</tr>";
                 }
             } else {

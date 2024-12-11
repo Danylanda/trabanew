@@ -1,40 +1,23 @@
 <?php
+// Conexión a la base de datos
 include('conec.php');
-$conn = getConnection();
 
-// Obtener los parámetros de filtro
-$proyecto = isset($_POST['proyecto']) ? $_POST['proyecto'] : 'Todos';
-$cliente = isset($_POST['cliente']) ? $_POST['cliente'] : 'Todos';
-$cuota = isset($_POST['cuota']) ? $_POST['cuota'] : 'Todas';
+$conexion = new mysqli('127.0.0.1', 'root', '', 'sistema_pagos');
+if ($conexion->connect_error) {
+    die("Conexión fallida: " . $conexion->connect_error);
+}
 
-// Construir la consulta SQL con los filtros
+// Consultas para obtener los datos
 $sql = "
     SELECT 
-        YEAR(p.Fecha_de_pago) AS anio,
-        SUM(p.Monto_recibido) AS pagos_totales,
-        SUM(CASE WHEN p.Tipo_de_Cuota = 'Interes' THEN p.Monto_recibido ELSE 0 END) AS pagos_interes,
-        SUM(CASE WHEN p.Tipo_de_Cuota = 'Capital' THEN p.Monto_recibido ELSE 0 END) AS pagos_capital
-    FROM pagos p
-    JOIN contratos c ON p.ID_Contrato = c.ID_Contrato
-    JOIN clientes cl ON c.ID_Cliente = cl.ID_Cliente
-    WHERE 1=1
+        YEAR(fecha_pago) AS anio,
+        SUM(monto_recibido) AS pagos_totales,
+        SUM(CASE WHEN tipo_cuota = 'Interes' THEN monto_recibido ELSE 0 END) AS pagos_interes,
+        SUM(CASE WHEN tipo_cuota = 'Capital' THEN monto_recibido ELSE 0 END) AS pagos_capital
+    FROM pagos
+    GROUP BY YEAR(fecha_pago)
 ";
-
-if ($proyecto != 'Todos') {
-    $sql .= " AND c.ID_Proyecto = '$proyecto'";
-}
-
-if ($cliente != 'Todos') {
-    $sql .= " AND cl.Nombre = '$cliente'";
-}
-
-if ($cuota != 'Todas') {
-    $sql .= " AND p.Tipo_de_Cuota = '$cuota'";
-}
-
-$sql .= " GROUP BY YEAR(p.Fecha_de_pago)";
-
-$result = $conn->query($sql);
+$result = $conexion->query($sql);
 
 $anios = [];
 $pagos_totales = [];
@@ -48,7 +31,7 @@ while ($row = $result->fetch_assoc()) {
     $pagos_capital[] = $row['pagos_capital'];
 }
 
-closeConnection($conn);
+$conexion->close();
 ?>
 
 <!DOCTYPE html>
@@ -56,6 +39,33 @@ closeConnection($conn);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   
+    <title>Filtro de Proyecto</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .filter-container {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .filter-container select {
+            padding: 8px;
+            font-size: 16px;
+        }
+        .filter-container {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .filter-container select {
+            padding: 8px;
+            font-size: 16px;
+        }
+    </style>
+   
     <title>Estadísticas de Pagos</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -97,18 +107,18 @@ closeConnection($conn);
     </style>
 </head>
 <body>
-    <div style="text-align: left; margin: 20px;">
-        <button onclick="regresarInicio()" style="
-            padding: 10px 20px; 
-            font-size: 16px; 
-            background-color: #333; 
-            color: white; 
-            border: none; 
-            border-radius: 5px; 
-            cursor: pointer;">
-            Inicio
-        </button>
-    </div>
+<div style="text-align: left; margin: 20px;">
+    <button onclick="regresarInicio()" style="
+        padding: 10px 20px; 
+        font-size: 16px; 
+        background-color: #333; 
+        color: white; 
+        border: none; 
+        border-radius: 5px; 
+        cursor: pointer;">
+        Inicio
+    </button>
+</div>
     <h1>Pago Anual</h1>
     
     <form method="POST" action="procesar_filtro.php">
@@ -117,43 +127,41 @@ closeConnection($conn);
             <div>
                 <label for="proyecto">Proyecto:</label>
                 <select name="proyecto" id="proyecto">
-                    <option value="Todos" <?= $proyecto == 'Todos' ? 'selected' : '' ?>>Todos</option>
-                    <option value="J1" <?= $proyecto == 'J1' ? 'selected' : '' ?>>J1</option>
-                    <option value="J2" <?= $proyecto == 'J2' ? 'selected' : '' ?>>J2</option>
-                    <option value="J3" <?= $proyecto == 'J3' ? 'selected' : '' ?>>J3</option>
+                    <option value="J1">J1</option>
+                    <option value="J2">J2</option>
+                    <option value="J3">J3</option>
                 </select>
             </div>
             <!-- Filtro de Cliente -->
             <div>
                 <label for="cliente">Cliente:</label>
                 <select name="cliente" id="cliente">
-                    <option value="Todos" <?= $cliente == 'Todos' ? 'selected' : '' ?>>Todos</option>
-                    <option value="Cliente1" <?= $cliente == 'Cliente1' ? 'selected' : '' ?>>Cliente 1</option>
-                    <option value="Cliente2" <?= $cliente == 'Cliente2' ? 'selected' : '' ?>>Cliente 2</option>
-                    <option value="Cliente3" <?= $cliente == 'Cliente3' ? 'selected' : '' ?>>Cliente 3</option>
+                    <option value="Todos">Todos</option>
+                    <option value="Cliente1">Cliente 1</option>
+                    <option value="Cliente2">Cliente 2</option>
+                    <option value="Cliente3">Cliente 3</option>
                 </select>
             </div>
             <!-- Filtro de Cuota -->
             <div>
                 <label for="cuota">Cuota:</label>
                 <select name="cuota" id="cuota">
-                    <option value="Todas" <?= $cuota == 'Todas' ? 'selected' : '' ?>>Todas</option>
-                    <option value="Cuota1" <?= $cuota == 'Cuota1' ? 'selected' : '' ?>>Cuota 1</option>
-                    <option value="Cuota2" <?= $cuota == 'Cuota2' ? 'selected' : '' ?>>Cuota 2</option>
-                    <option value="Cuota3" <?= $cuota == 'Cuota3' ? 'selected' : '' ?>>Cuota 3</option>
+                    <option value="Todas">Todas</option>
+                    <option value="Cuota1">Cuota 1</option>
+                    <option value="Cuota2">Cuota 2</option>
+                    <option value="Cuota3">Cuota 3</option>
                 </select>
             </div>
         </div>
         <button type="submit">Filtrar</button>
     </form>    
 
-    <script>
-        function regresarInicio() {
-            // Redirecciona a la página principal (inicio.php o index.php)
-            window.location.href = 'index.php';
-        }
-    </script>
-
+<script>
+    function regresarInicio() {
+        // Redirecciona a la página principal (inicio.php o index.php)
+        window.location.href = 'index.php';
+    }
+</script>
     <div class="container">
         <!-- Medidor Pagos Totales -->
         <div class="panel">
