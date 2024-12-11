@@ -117,4 +117,7 @@ function closeConnection($conn) {
     $conn->close();
 }
 ?>
+<<<<<<< HEAD
 ?>
+=======
+>>>>>>> 76ca9cc (iniciobuscarybotonesposteriores)
